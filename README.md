@@ -1,111 +1,70 @@
-# 🏫 AI-Powered School Database Query Assistant
+# 🏫 Secure Text-to-SQL RAG Agent with External Verification
 
-This is a secure Streamlit application that provides a natural language
-interface to query a PostgreSQL school management database. It uses the
-Gemini API to translate user questions into SQL, with a critical Python
-layer to enforce strict security policies.
+> **A secure, human-in-the-loop Text-to-SQL system powered by Google Gemini and Google Sheets for transparent, verifiable AI query generation.**
 
-✨ Features - **Natural Language to SQL**: Uses the Gemini model to
-convert plain English questions (e.g., "Show me my timetable") into
-valid PostgreSQL queries. - **Role-Based Access Control (RBAC)**:
-Restricts data based on the authenticated user's role (ADMIN, PRINCIPAL,
-TEACHER, STUDENT). - **Strict Data Isolation**: A Python enforcement
-layer guarantees that all non-admin queries are filtered by the user's
-authenticated school_id, preventing cross-school data leakage. -
-**Simple Streamlit UI**: A clean, single-screen interface for login,
-query input, and displaying results in a DataFrame.
+---
 
-⚙️ Prerequisites and Setup 1. **Environment and Dependencies**\
-You'll need Python 3.8+ and access to a PostgreSQL database.
+## 🚀 Overview
 
-``` bash
-# Install required libraries
-pip install streamlit python-dotenv google-genai psycopg2-binary pandas
-```
+This project implements a **secure, role-based Text-to-SQL agent** powered by **Google’s Gemini models**, augmented with a **Retrieval-Augmented Generation (RAG)** pipeline and **manual human verification via Google Sheets**.
 
-2.  **Configuration (.env file)**\
-    Create a file named `.env` in the same directory as your Python
-    script to store sensitive information:
+It ensures that **only human-approved SQL queries** are used to train and improve the system — maintaining a transparent and trustworthy AI workflow.
 
-``` env
-# Gemini API Key
-GOOGLE_API_KEY="YOUR_GEMINI_API_KEY_HERE"
+---
 
-# PostgreSQL Database Connection Details
-DB_HOST="localhost"
-DB_PORT="5432"
-DB_NAME="postgres"
-DB_USER="postgres"
-DB_PASSWORD="lucky535"
-```
+## ✨ Key Features
 
-3.  **Database Schema**\
-    The application requires specific column names for security and
-    function. Ensure your PostgreSQL database includes at least the
-    following columns in the respective tables:
+### 🧠 LLM-Powered Text-to-SQL
+Converts natural language questions into secure, executable **PostgreSQL** queries using **Gemini 2.5 Flash**.
 
-  ------------------------------------------------------------------------
-  Table Name        Critical Columns                           Notes
-  ----------------- ------------------------------------------ -----------
-  users             id, username, role, school_id              The
-                                                               school_id
-                                                               must be
-                                                               populated
-                                                               (not NULL)
-                                                               for all
-                                                               users
+### 🔐 Role-Based Access Control (RBAC)
+Automatically applies contextual security filters (`school_id`, `user_id`, `class_id`) based on the logged-in user's role:
+- `STUDENT`
+- `TEACHER`
+- `PRINCIPAL`
+- `ADMIN`
 
-  student           user_id, school_id                         
+### 🧾 Human-in-the-Loop Verification (Google Sheets)
+- Every generated SQL query is **automatically logged** to a shared **Google Sheet**.  
+- Queries must be **manually marked as `TRUE`** under the `approved` column before they are added to the RAG system.  
+- Ensures the AI learns only from **verified, correct SQL statements**.
 
-  teacher           user_id, school_id                         
+### 🧬 Personalized RAG System
+- Stores verified SQL embeddings in an **in-memory vector database**.
+- Retrieval is **boosted** for queries approved by the same user or role.
+- Fast, accurate, and adaptive.
 
-  classroom         class_teacher_id, school_id                
+### 🛠️ Self-Correction Engine
+Uses **sqlfluff** to validate and auto-correct SQL syntax before execution — reducing runtime errors and LLM noise.
 
-  exam_result       student_id, school_id                      
-  ------------------------------------------------------------------------
+---
 
-------------------------------------------------------------------------
+## 🧩 Architecture Overview
 
-🔑 Security and Access Control Explained The security of this
-application operates in two distinct, sequential layers:
+| Component | Technology | Role |
+|------------|-------------|------|
+| **Frontend** | Streamlit (`app.py`) | User interface, authentication, and query execution |
+| **LLM Agent** | Gemini 2.5 Flash (`agent.py`) | Text-to-SQL generation + correction loop |
+| **RAG / Vector DB** | In-memory list + cosine similarity | Stores embeddings of verified queries |
+| **Verification Layer** | Google Sheets (`utils/gspread_client.py`) | Manual review and approval pipeline |
+| **Database** | PostgreSQL + Psycopg2 | Persistent storage and secure query execution |
 
-**Layer 1: AI Guidance (`get_role_based_prompt`)**\
-The code passes a detailed instruction prompt to the Gemini model,
-explicitly telling it to include the user's specific school_id and role
-filters in the generated SQL. This makes the AI a partner in security.
+---
 
-**Layer 2: Python Enforcement (`add_access_control`)**\
-This is the ultimate security firewall. Before any SQL query hits the
-database, this Python function performs these mandatory checks:
+## ⚙️ Setup & Installation
 
--   **Non-Admin Check**: If the user is not an ADMIN, the code checks
-    the raw SQL query generated by the AI.\
--   **School ID Injection**: If the query does not already contain a
-    filter for school_id, the function automatically injects
-    `WHERE school_id = [user's school_id]` (or `AND` if a WHERE clause
-    exists).\
--   **Role Restriction**: Additional filters are applied based on the
-    user's role (e.g., a STUDENT is restricted by their user_id, a
-    TEACHER is restricted to their assigned class_ids).
+### 1️⃣ Prerequisites
 
-This two-layer approach ensures that even if the AI makes an error or
-forgets a filter, the Python code prevents unauthorized data access.
+You will need:
+- A **Google Gemini API Key**
+- A **Google Sheets Service Account JSON key**
+- A running **PostgreSQL** instance
 
-------------------------------------------------------------------------
+---
 
-🚀 Running the Application Save the provided Python code as `app.py` and
-execute it in your terminal:
+### 2️⃣ Python Environment
 
-``` bash
-streamlit run app.py
-```
+Create a virtual environment and install dependencies:
 
-------------------------------------------------------------------------
-
-⚠️ Troubleshooting the "None" Error If you see an error like
-`Database/Access Error: column "None" does not exist` after logging in,
-it means the `school_id` fetched from your database was a NULL value.
-
-**Solution**:\
-Update the corresponding user record in your PostgreSQL database to
-assign a valid, non-NULL numeric value for the `school_id` column.
+```bash
+pip install -r requirements.txt
